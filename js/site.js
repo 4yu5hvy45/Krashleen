@@ -74,7 +74,7 @@
     pre && pre.classList.add('done');
     setTimeout(() => {
       h1 && h1.classList.add('in');
-      $$('.hero .rv, .hero .draw').forEach(el => el.classList.add('in'));
+      $$('.hero2 .rv, .hero2 .draw').forEach(el => el.classList.add('in'));
       if (sticker && !reduce) { setTimeout(() => sticker.classList.add('on'), 1600); setTimeout(() => sticker.classList.remove('on'), 3800); }
     }, reduce ? 0 : 450);
   };
@@ -90,7 +90,7 @@
     if (el.classList.contains('gal')) $$('img', el).forEach(i => i.classList.add('dev'));
     io.unobserve(el);
   }), { rootMargin: '0px 0px -10% 0px' });
-  $$('.rv, .draw, .gal, [data-split], .reveal-img').forEach(el => { if (!el.closest('.hero')) io.observe(el); });
+  $$('.rv, .draw, .gal, [data-split], .reveal-img').forEach(el => { if (!el.closest('.hero2')) io.observe(el); });
 
   /* ---------- cached measurements ---------- */
   const prog = $('#prog'), mprog = $('#mprog'), mbar = $('#mbar');
@@ -115,7 +115,7 @@
       } else { pin.style.removeProperty('--feat-h'); track.style.transform = ''; M.feat = null; panelImgs.forEach(i => i.style.transform = ''); }
     }
     M.docH = document.documentElement.scrollHeight;
-    M.heroH = ($('.hero') || {}).offsetHeight || vh;
+    M.heroH = ($('.hero2') || {}).offsetHeight || vh;
     M.darks = darkEls.map(d => { const t = absTop(d); return [t, t + d.offsetHeight]; });
     if (curveFig && curvePath) {
       const len = curvePath.getTotalLength();
