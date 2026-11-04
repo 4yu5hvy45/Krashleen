@@ -3,6 +3,7 @@
   const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const body = document.body;
 
   /* ---------- smooth scroll ---------- */
   let lenis = null;
@@ -11,52 +12,67 @@
     const raf = t => { lenis.raf(t); requestAnimationFrame(raf); };
     requestAnimationFrame(raf);
   }
-  const scrollTo = target => lenis ? lenis.scrollTo(target, { offset: -10 }) : target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+  const goTo = el => lenis ? lenis.scrollTo(el, { offset: 0 }) : (el === 0 ? scrollTo(0, 0) : el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }));
+
+  /* ---------- menu ---------- */
+  const menuBtns = [$('#menuBtn'), $('#menuBtn2')];
+  const setMenu = open => {
+    body.classList.toggle('menu-open', open);
+    menuBtns.forEach(b => b && b.setAttribute('aria-expanded', open));
+    open ? lenis && lenis.stop() : lenis && lenis.start();
+  };
+  menuBtns.forEach(b => b && b.addEventListener('click', () => setMenu(!body.classList.contains('menu-open'))));
   $$('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
     const id = a.getAttribute('href');
-    const el = id === '#top' ? document.body : $(id);
-    if (!el) return;
-    e.preventDefault(); closeMenu(); scrollTo(id === '#top' ? 0 : el);
+    const el = id === '#top' ? 0 : $(id);
+    if (el === null) return;
+    e.preventDefault(); setMenu(false); goTo(el);
   }));
 
-  /* ---------- intro ---------- */
-  requestAnimationFrame(() => document.documentElement.classList.add('ready'));
-  const peek = $('#heroSticker');
-  if (peek && !reduce) { setTimeout(() => peek.classList.add('peek'), 2200); setTimeout(() => peek.classList.remove('peek'), 4200); }
+  /* ---------- preloader + hero intro ---------- */
+  const pre = $('#pre'), h1 = $('#h1'), sticker = $('#hsticker');
+  const intro = () => {
+    pre && pre.classList.add('done');
+    setTimeout(() => {
+      h1 && h1.classList.add('in');
+      $$('.hero .rv').forEach(el => el.classList.add('in'));
+      $$('.hero .draw').forEach(el => el.classList.add('in'));
+      if (sticker && !reduce) { setTimeout(() => sticker.classList.add('on'), 1600); setTimeout(() => sticker.classList.remove('on'), 3800); }
+    }, reduce ? 0 : 450);
+  };
+  if (reduce || sessionStorageSeen()) { pre && (pre.style.display = 'none'); intro(); }
+  else addEventListener('load', () => setTimeout(intro, 1300));
+  setTimeout(() => { if (pre && !pre.classList.contains('done')) intro(); }, 3500);
+  function sessionStorageSeen() {
+    try { const s = sessionStorage.getItem('kk-seen'); sessionStorage.setItem('kk-seen', '1'); return !!s; } catch { return false; }
+  }
 
-  /* ---------- nav ---------- */
-  const nav = $('#nav'); let lastY = 0;
+  /* ---------- reveal ---------- */
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add('in');
+    $$('img', e.target).forEach(i => e.target.classList.contains('gal') && i.classList.add('dev'));
+    io.unobserve(e.target);
+  }), { rootMargin: '0px 0px -10% 0px' });
+  $$('.rv, .draw, .gal').forEach(el => { if (!el.closest('.hero')) io.observe(el); });
+
+  /* ---------- rails: progress, dark sections, parallax, mbar ---------- */
+  const prog = $('#prog'), mprog = $('#mprog'), mbar = $('#mbar');
+  const darks = $$('[data-dark]');
+  const para = $$('[data-speed]');
+  let lastY = 0;
   const onScroll = () => {
-    const y = window.scrollY;
-    nav.classList.toggle('scrolled', y > 40);
-    nav.classList.toggle('hide', y > lastY && y > 500 && !sheetOpen);
+    const y = scrollY, max = document.documentElement.scrollHeight - innerHeight;
+    const p = max > 0 ? y / max : 0;
+    if (prog) prog.style.transform = `scaleY(${p})`;
+    if (mprog) mprog.style.transform = `scaleX(${p})`;
+    const mid = innerHeight / 2;
+    body.classList.toggle('on-dark', darks.some(d => { const r = d.getBoundingClientRect(); return r.top < mid && r.bottom > mid; }));
+    if (!reduce && y < innerHeight * 1.2) para.forEach(el => el.style.transform = `translate3d(0,${y * parseFloat(el.dataset.speed)}px,0)`);
+    if (mbar) mbar.classList.toggle('hide', y > lastY && y > 300 && !body.classList.contains('menu-open') && !sheetOpen);
     lastY = y;
   };
   addEventListener('scroll', onScroll, { passive: true });
-
-  const menu = $('#mobileMenu'), menuBtn = $('#menuBtn');
-  function closeMenu() { menu.classList.remove('open'); menu.setAttribute('aria-hidden', 'true'); menuBtn.setAttribute('aria-expanded', 'false'); }
-  menuBtn.addEventListener('click', () => { menu.classList.add('open'); menu.setAttribute('aria-hidden', 'false'); menuBtn.setAttribute('aria-expanded', 'true'); });
-  $('#menuClose').addEventListener('click', closeMenu);
-
-  /* ---------- reveal + counters ---------- */
-  const io = new IntersectionObserver(es => es.forEach(e => {
-    if (!e.isIntersecting) return;
-    e.target.classList.add('in'); io.unobserve(e.target);
-  }), { rootMargin: '0px 0px -8% 0px' });
-  $$('.rv').forEach(el => io.observe(el));
-
-  const fmt = (v, dec) => dec ? v.toFixed(dec) : Math.round(v).toLocaleString('en-IN');
-  const countIO = new IntersectionObserver(es => es.forEach(e => {
-    if (!e.isIntersecting) return; countIO.unobserve(e.target);
-    const el = e.target, to = parseFloat(el.dataset.count), dec = +el.dataset.dec || 0, suf = el.dataset.suffix || '';
-    if (reduce) return;
-    const t0 = performance.now(), dur = 1600;
-    const tick = t => { const p = Math.min(1, (t - t0) / dur), k = 1 - Math.pow(1 - p, 3);
-      el.textContent = fmt(to * k, dec).replace(/(\d)(?=(\d{3})+$)/, '$1,') + suf; if (p < 1) requestAnimationFrame(tick); };
-    requestAnimationFrame(tick);
-  }), { threshold: .6 });
-  $$('[data-count]').forEach(el => countIO.observe(el));
 
   /* ---------- lightbox ---------- */
   const lb = $('#lb'), lbImg = $('#lbImg');
@@ -64,33 +80,32 @@
   const closeLB = () => lb.classList.remove('open');
   lb.addEventListener('click', closeLB);
 
-  /* ---------- draggable clippings ---------- */
-  const board = $('#board');
+  /* ---------- media board: drag on desktop mouse, tap to open everywhere ---------- */
+  const canDrag = () => fine && matchMedia('(min-width: 901px)').matches;
   let z = 10;
-  $$('.clip', board).forEach(clip => {
+  $$('#board .clip').forEach(clip => {
     clip.tabIndex = 0; clip.setAttribute('role', 'button');
     clip.setAttribute('aria-label', 'Open ' + ($('img', clip).alt || 'clipping'));
-    let sx, sy, ox = 0, oy = 0, moved = false, down = false, base = getComputedStyle(clip).transform;
-    const desktop = () => matchMedia('(min-width: 761px)').matches;
+    let sx = 0, sy = 0, ox = 0, oy = 0, down = false, moved = false;
+    const base = getComputedStyle(clip).transform;
+    const baseT = base === 'none' ? '' : base;
     clip.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'mouse' || !canDrag()) return;
       down = true; moved = false; sx = e.clientX - ox; sy = e.clientY - oy;
-      clip.style.zIndex = ++z;
-      if (desktop()) { clip.setPointerCapture(e.pointerId); clip.classList.add('dragging'); }
+      clip.style.zIndex = ++z; clip.setPointerCapture(e.pointerId); clip.classList.add('dragging');
     });
     clip.addEventListener('pointermove', e => {
-      if (!down || !desktop()) return;
+      if (!down) return;
       const nx = e.clientX - sx, ny = e.clientY - sy;
-      if (Math.abs(nx - ox) + Math.abs(ny - oy) > 3) moved = true;
+      if (Math.abs(nx - ox) + Math.abs(ny - oy) > 2) moved = true;
       ox = nx; oy = ny;
-      clip.style.transform = `translate(${ox}px,${oy}px) ${base === 'none' ? '' : base} rotate(0deg) scale(1.03)`;
+      clip.style.transform = `translate(${ox}px,${oy}px) ${baseT} scale(1.03)`;
     });
-    const up = () => {
-      if (!down) return; down = false; clip.classList.remove('dragging');
-      if (desktop()) clip.style.transform = `translate(${ox}px,${oy}px) ${base === 'none' ? '' : base}`;
-      if (!moved) openLB(clip.dataset.full, $('img', clip).alt);
-    };
-    clip.addEventListener('pointerup', up);
-    clip.addEventListener('pointercancel', () => { down = false; clip.classList.remove('dragging'); });
+    const end = () => { if (!down) return; down = false; clip.classList.remove('dragging'); clip.style.transform = `translate(${ox}px,${oy}px) ${baseT}`; };
+    clip.addEventListener('pointerup', end);
+    clip.addEventListener('pointercancel', end);
+    // a click only fires for a real tap/click, never for a scroll gesture on touch screens
+    clip.addEventListener('click', () => { if (moved) { moved = false; return; } openLB(clip.dataset.full, $('img', clip).alt); });
     clip.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLB(clip.dataset.full, $('img', clip).alt); } });
   });
 
@@ -102,15 +117,13 @@
     rows.forEach(r => r.hidden = !(f === 'all' || r.dataset.cat === f));
   }));
 
-  /* ---------- hover preview ---------- */
+  /* ---------- hover preview (desktop) ---------- */
   const pv = $('#preview');
   if (fine && pv) {
     const imgs = {};
-    rows.forEach(r => { const b = $('button', r), src = b.dataset.img;
-      const im = new Image(); im.src = src; im.alt = ''; pv.appendChild(im); imgs[src] = im; });
-    let x = innerWidth / 2, y = innerHeight / 2, cx = x, cy = y, on = false;
-    const loop = () => { cx += (x - cx) * .14; cy += (y - cy) * .14;
-      pv.style.left = cx + 'px'; pv.style.top = cy + 'px'; if (on) requestAnimationFrame(loop); };
+    rows.forEach(r => { const src = $('button', r).dataset.img; const im = new Image(); im.src = src; im.alt = ''; pv.appendChild(im); imgs[src] = im; });
+    let x = 0, y = 0, cx = 0, cy = 0, on = false;
+    const loop = () => { cx += (x - cx) * .14; cy += (y - cy) * .14; pv.style.left = cx + 'px'; pv.style.top = cy + 'px'; if (on) requestAnimationFrame(loop); };
     rows.forEach(r => { const b = $('button', r);
       b.addEventListener('mouseenter', e => {
         Object.values(imgs).forEach(i => i.classList.remove('cur')); imgs[b.dataset.img].classList.add('cur');
@@ -123,23 +136,26 @@
   }
 
   /* ---------- case sheet ---------- */
-  const sheet = $('#sheet'), body = $('#sheetBody');
+  const sheet = $('#sheet'), sbody = $('#sheetBody');
   const order = rows.map(r => $('button', r).dataset.case);
   let sheetOpen = false, current = null, lastFocus = null;
   function openCase(id, push = true) {
     const tpl = $('#case-' + id); if (!tpl) return;
     current = id;
-    body.innerHTML = ''; body.appendChild(tpl.content.cloneNode(true)); body.scrollTop = 0;
-    $$('.case-media figure', body).forEach(f => f.addEventListener('click', () => { const i = $('img', f); openLB(i.src, i.alt); }));
-    if (!sheetOpen) { lastFocus = document.activeElement; sheetOpen = true;
-      sheet.classList.add('open'); sheet.setAttribute('aria-hidden', 'false'); lenis && lenis.stop(); document.body.style.overflow = 'hidden'; }
-    setTimeout(() => $('[data-close]', sheet.querySelector('.sheet-bar')).focus(), 60);
+    sbody.innerHTML = ''; sbody.appendChild(tpl.content.cloneNode(true)); sbody.scrollTop = 0;
+    $$('.case-media figure', sbody).forEach(f => f.addEventListener('click', () => { const i = $('img', f); openLB(i.src, i.alt); }));
+    if (!sheetOpen) {
+      lastFocus = document.activeElement; sheetOpen = true;
+      sheet.classList.add('open'); sheet.setAttribute('aria-hidden', 'false');
+      lenis && lenis.stop(); body.style.overflow = 'hidden';
+    }
+    setTimeout(() => $('.sheet-bar [data-close]').focus(), 60);
     if (push) history.replaceState(null, '', '#case/' + id);
   }
   function closeCase() {
     if (!sheetOpen) return; sheetOpen = false;
     sheet.classList.remove('open'); sheet.setAttribute('aria-hidden', 'true');
-    lenis && lenis.start(); document.body.style.overflow = '';
+    lenis && lenis.start(); body.style.overflow = '';
     history.replaceState(null, '', location.pathname);
     lastFocus && lastFocus.focus();
   }
@@ -149,21 +165,20 @@
   $('#prevCase').addEventListener('click', () => step(-1));
   $('#nextCase').addEventListener('click', () => step(1));
   addEventListener('keydown', e => {
-    if (e.key === 'Escape') { if (lb.classList.contains('open')) return closeLB(); closeCase(); closeMenu(); }
+    if (e.key === 'Escape') { if (lb.classList.contains('open')) return closeLB(); if (sheetOpen) return closeCase(); setMenu(false); }
     if (sheetOpen && !lb.classList.contains('open')) { if (e.key === 'ArrowRight') step(1); if (e.key === 'ArrowLeft') step(-1); }
-    if (sheetOpen && e.key === 'Tab') { // focus trap
+    if (sheetOpen && e.key === 'Tab') {
       const f = $$('button, a[href], [tabindex="0"]', sheet).filter(el => el.offsetParent);
       if (!f.length) return; const first = f[0], last = f[f.length - 1];
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     }
   });
-  const fromHash = () => { const m = location.hash.match(/^#case\/([\w-]+)/); if (m) openCase(m[1], false); };
-  fromHash();
+  const m = location.hash.match(/^#case\/([\w-]+)/); if (m) openCase(m[1], false);
 
   /* ---------- featured horizontal scroll ---------- */
-  const pin = $('#featPin'), track = $('#featTrack'), bar = $('#featBar');
-  const horiz = () => !reduce && matchMedia('(min-width: 861px)').matches;
+  const pin = $('#featPin'), track = $('#featTrack');
+  const horiz = () => !reduce && matchMedia('(min-width: 901px)').matches;
   let dist = 0;
   const size = () => {
     if (!horiz()) { pin.style.removeProperty('--feat-h'); track.style.transform = ''; return; }
@@ -175,18 +190,17 @@
     const r = pin.getBoundingClientRect();
     const p = Math.min(1, Math.max(0, -r.top / (pin.offsetHeight - innerHeight || 1)));
     track.style.transform = `translate3d(${-dist * p}px,0,0)`;
-    bar.parentElement.style.setProperty('--p', p);
+    $('#featBar').parentElement.style.setProperty('--p', p);
   };
-  addEventListener('resize', () => { size(); feat(); });
+  addEventListener('resize', () => { size(); feat(); onScroll(); });
   addEventListener('scroll', feat, { passive: true });
   addEventListener('load', () => { size(); feat(); });
-  size();
+  size(); onScroll();
 
-  /* ---------- copy email ---------- */
-  const cm = $('#copyMail');
-  cm.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText('Krashleenkaurchhabra15@gmail.com'); cm.textContent = 'Copied ✓'; }
-    catch { cm.textContent = 'Krashleenkaurchhabra15@gmail.com'; }
-    setTimeout(() => cm.textContent = 'Copy email', 2200);
-  });
+  /* ---------- copy buttons ---------- */
+  $$('.cpy').forEach(b => b.addEventListener('click', async () => {
+    const t = $('#' + b.dataset.copy).textContent.trim();
+    try { await navigator.clipboard.writeText(t); b.textContent = 'Copied'; } catch { b.textContent = 'Select it'; }
+    setTimeout(() => b.textContent = 'Copy', 1800);
+  }));
 })();
