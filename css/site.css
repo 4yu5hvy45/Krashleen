@@ -453,3 +453,98 @@ html{overflow-x:clip}body{overflow-x:clip}
 @media(min-width:901px){.feat-sticky{margin:0 var(--rail)}.feat .wrap{padding:0 var(--pad)}.feat-track{padding:0 var(--pad)}}
 .board-note{max-width:24ch;font-size:28px;bottom:2%}
 @media(max-width:900px){.wordmark{font-size:25vw}}
+
+/* ================= v3 · motion & texture ================= */
+/* living paper grain: one composited layer moved in steps, never repainted */
+body::after{inset:-8%;opacity:.32;background-image:url(../img/grain.png);background-size:256px 256px;will-change:transform;animation:grain 1s steps(5) infinite}
+@keyframes grain{0%{transform:translate3d(0,0,0)}20%{transform:translate3d(-40px,24px,0)}40%{transform:translate3d(32px,-48px,0)}60%{transform:translate3d(-18px,56px,0)}80%{transform:translate3d(52px,12px,0)}100%{transform:translate3d(0,0,0)}}
+@media(hover:none),(prefers-reduced-motion:reduce){body::after{animation:none}}
+
+/* split headings: words rise out of a mask */
+[data-split] .w{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.08em;margin-bottom:-.08em}
+[data-split] .w>span{display:inline-block;transform:translateY(105%);transition:transform 1.1s cubic-bezier(.16,1,.3,1);transition-delay:calc(var(--i,0) * 55ms)}
+[data-split].in .w>span{transform:none}
+[data-split].rv{opacity:1;transform:none}
+
+/* pen underline draws in */
+.ul{background-size:0% .26em;transition:background-size 1.2s cubic-bezier(.65,0,.35,1)}
+.in .ul{background-size:100% .26em}
+.in .ul:nth-of-type(2){transition-delay:.35s}.in .ul:nth-of-type(3){transition-delay:.7s}
+
+/* photo reveal */
+.reveal-img{clip-path:inset(100% 0 0 0);transition:clip-path 1.4s cubic-bezier(.65,0,.35,1) .1s,filter 1.6s var(--ease)}
+.in .reveal-img,.reveal-img.in{clip-path:inset(0 0 0 0)}
+
+/* tilt cards */
+[data-tilt]{transform-style:preserve-3d;will-change:transform}
+
+/* custom cursor (fine pointers only) */
+.cursor{position:fixed;left:0;top:0;z-index:400;pointer-events:none;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--accent);display:grid;place-items:center;transition:width .35s cubic-bezier(.16,1,.3,1),height .35s cubic-bezier(.16,1,.3,1),margin .35s cubic-bezier(.16,1,.3,1),background .3s,opacity .3s;will-change:transform;opacity:0}
+.cursor span{font:500 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--paper);opacity:0;transition:opacity .2s}
+.cursor.on{opacity:1}
+.cursor.link{width:44px;height:44px;margin:-22px 0 0 -22px;background:rgba(138,43,31,.14)}
+.cursor.label{width:84px;height:84px;margin:-42px 0 0 -42px;background:var(--accent)}
+.cursor.label span{opacity:1}
+body.on-dark .cursor:not(.label){background:var(--paper)}
+@media(hover:none),(pointer:coarse){.cursor{display:none}}
+
+/* animated line icons */
+.cap svg.ic *{stroke-dasharray:80;stroke-dashoffset:80;transition:stroke-dashoffset 1.4s cubic-bezier(.65,0,.35,1) .2s}
+.cap.in svg.ic *{stroke-dashoffset:0}
+.ic-target circle:last-child{transform-origin:12px 12px}
+.cap:hover .ic-target circle:last-child{animation:pulse-dot 1s ease-in-out infinite}
+@keyframes pulse-dot{50%{transform:scale(2.6)}}
+.cap:hover .ic-star{animation:twirl 1.2s cubic-bezier(.34,1.56,.64,1)}
+@keyframes twirl{to{transform:rotate(132deg) scale(1)}}
+.cap:hover .ic-cam circle:last-child{animation:flash .9s ease-out infinite}
+@keyframes flash{0%,100%{opacity:1}40%{opacity:0}}
+.ic-eye{transform-origin:center}
+.cap:hover .ic-eye{animation:blink 1.6s ease-in-out infinite}
+@keyframes blink{0%,40%,100%{transform:scaleY(1)}45%{transform:scaleY(.1)}50%{transform:scaleY(1)}}
+
+/* doodles */
+.spark{position:absolute;width:22px;height:22px;fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linecap:round;animation:twinkle 2.6s ease-in-out infinite}
+.spark.s1{right:-30px;top:-18px}
+.spark.s2{right:-46px;top:8px;width:14px;height:14px;animation-delay:.9s}
+.contact .spark.s3{position:relative;display:block;width:30px;height:30px;stroke:#F6D9CC;margin:26px 0 -20px clamp(220px,30vw,520px)}
+@keyframes twinkle{0%,100%{transform:scale(.6) rotate(0);opacity:.35}50%{transform:scale(1) rotate(45deg);opacity:1}}
+.doodle-arrow{width:56px;height:28px;margin-left:10px;vertical-align:middle;overflow:visible}
+.doodle-arrow path{fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* process curve: scrubbed by scroll */
+#curve .line{stroke-dasharray:1;stroke-dashoffset:var(--draw,1)}
+#curve .pts circle{opacity:0;transition:opacity .4s}
+#curve .pts circle.on{opacity:1}
+#curveDot{filter:drop-shadow(0 0 0 rgba(138,43,31,.4))}
+
+/* ID card stamp */
+.idcard{position:relative}
+.idcard.rv{opacity:1;transform:rotate(-2deg)}
+.idcard .pic{position:relative}
+.stamp{position:absolute;right:-26px;bottom:14px;z-index:2;font:500 11px/1.2 var(--mono);letter-spacing:.2em;text-transform:uppercase;text-align:center;color:var(--accent);border:2px solid var(--accent);border-radius:6px;padding:8px 10px;transform:rotate(-14deg) scale(2.4);opacity:0;mix-blend-mode:multiply;transition:transform .35s cubic-bezier(.5,0,.75,0) .5s,opacity .2s .5s}
+.idcard.in .stamp{transform:rotate(-14deg) scale(1);opacity:.85}
+
+/* giant footer word rises letter by letter */
+.giant.rv{opacity:1;transform:none}
+.giant span{display:inline-block;transform:translateY(60%);opacity:0;transition:transform 1.2s cubic-bezier(.16,1,.3,1),opacity 1s;transition-delay:calc(var(--i) * 60ms)}
+.giant.in span{transform:none;opacity:1}
+
+/* featured: inner image parallax */
+.panel .ph img{will-change:transform}
+.panel .ph:not(.contain):not(.split) img{width:118%;max-width:none;margin-left:-9%}
+
+@media(prefers-reduced-motion:reduce){
+ [data-split] .w>span,.giant span{transform:none;opacity:1}
+ .reveal-img{clip-path:none}.ul{background-size:100% .26em}
+ .cap svg.ic *{stroke-dashoffset:0}.stamp{opacity:.85;transform:rotate(-14deg)}
+ #curve .line{stroke-dashoffset:0}#curve .pts circle{opacity:1}
+ .spark{animation:none}
+}
+/* tilt composes with each card's own resting angle */
+.hpolaroid[data-tilt]{--base:rotate(-6deg)}
+.about-photo[data-tilt]{--base:rotate(-2deg)}
+.qr[data-tilt]{--base:rotate(2deg)}
+.qr[data-tilt]:hover{--base:rotate(0deg) translateY(-6px)}
+.idcard[data-tilt]{--base:rotate(-2deg)}
+.hpolaroid[data-tilt],.about-photo[data-tilt],.qr[data-tilt],.idcard[data-tilt]{transform:perspective(900px) var(--base) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .6s cubic-bezier(.16,1,.3,1)}
+[data-magnetic]{transition:transform .5s cubic-bezier(.16,1,.3,1)}
